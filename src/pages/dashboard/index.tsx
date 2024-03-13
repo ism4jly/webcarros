@@ -5,7 +5,8 @@ import { DashboardHeader } from '../../components/panelheader'
 import { FiTrash2 } from 'react-icons/fi'
 
 import { collection, getDocs, where, query, doc, deleteDoc } from 'firebase/firestore'
-import { db } from '../../services/firebaseConnection'
+import { db, storage } from '../../services/firebaseConnection'
+import { ref, deleteObject } from 'firebase/storage'
 import { AuthContext } from '../../contexts/AuthContext'
 
 interface CarsProps{
@@ -62,10 +63,23 @@ export function Dashboard() {
         loadCars()
     }, [user])
 
-    async function handleDeleteCar(id:string){
-        const docRef = doc(db, "cars", id)
-        await deleteDoc(docRef)
-        setCars(cars.filter(car => car.id !== id))
+    async function handleDeleteCar(car: CarsProps){
+        const itemCar = car;
+
+        const docRef = doc(db, "cars", itemCar.id)
+        await deleteDoc(docRef);
+
+        itemCar.images.map( async (image) => {
+            const imagePath = `images/${image.uid}/${image.name}`
+            const imageRef = ref(storage, imagePath)
+
+            try{
+                await deleteObject(imageRef)
+                setCars(cars.filter(car => car.id !== itemCar.id))
+            }catch(err){
+                console.log("Erro ao excluir essa imagem")
+            }
+        })
     }
 
     return (
@@ -81,7 +95,7 @@ export function Dashboard() {
                         className='w-full bg-white rounded-lg relative'
                     >
                     <button
-                        onClick={ () => handleDeleteCar(car.id)}
+                        onClick={ () => handleDeleteCar(car)}
                         className='absolute bg-white w-14 h-14 rounded-full flex items-center justify-center right-2 top-2 drop-shadow'
                     >
                         <FiTrash2
